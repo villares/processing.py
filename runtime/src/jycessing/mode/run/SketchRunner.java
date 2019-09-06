@@ -160,8 +160,10 @@ public class SketchRunner implements SketchService {
     // If env var SKETCH_RUNNER_FIRST=true then SketchRunner will wait for a ping from the Mode
     // before registering itself as the sketch runner.
     if (PythonMode.SKETCH_RUNNER_FIRST) {
+      log("Waiting for mode with id " + id);
       waitForMode(id);
     } else {
+      log("Starting sketch runner immediately with id " + id);
       startSketchRunner(id);
     }
   }
@@ -203,9 +205,9 @@ public class SketchRunner implements SketchService {
   private static void launch(final String id, final ModeService modeService)
       throws RMIProblem, RemoteException {
     final SketchRunner sketchRunner = new SketchRunner(id, modeService);
-    final SketchService stub = (SketchService)RMIUtils.export(sketchRunner);
+    RMIUtils.export(sketchRunner);
     log("Calling mode's handleReady().");
-    modeService.handleReady(id, stub);
+    modeService.handleReady(id, sketchRunner);
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log("Exiting; telling modeService.");
       try {

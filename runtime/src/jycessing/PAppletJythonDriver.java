@@ -405,7 +405,7 @@ public class PAppletJythonDriver extends PApplet {
     this.interp = interp;
     this.builtins = (PyStringMap) interp.getSystemState().getBuiltins();
 
-    interp.set("__file__", new File(pySketchPath).getName());
+    interp.set("__file__", Py.newStringUTF8(new File(pySketchPath).getName()));
     processSketch(DETECT_MODE_SCRIPT);
     this.mode = Mode.valueOf(interp.get("__mode__").asString());
     Runner.log("Mode: ", mode.name());
@@ -537,7 +537,12 @@ public class PAppletJythonDriver extends PApplet {
     } else {
       pyG = Py.java2py(g);
     }
-    builtins.__setitem__("g", pyG);
+    // We want the builtin "g" object to behave just like PGraphics instances
+    // created with createGraphics(), so that its beginPGL can be used in a with
+    // statement, etc.
+    interp.set("__original_g__", pyG);
+    final PyObject wrappedG = interp.eval("PGraphicsPythonModeWrapper(__original_g__)");
+    builtins.__setitem__("g", wrappedG);
 
     return s;
   }
@@ -892,6 +897,19 @@ public class PAppletJythonDriver extends PApplet {
         // fallthrough
       }
     } finally {
+      try {
+      if (stopMeth != null) {
+        stopMeth.__call__();
+      }
+      if (disposeMeth != null) {
+        disposeMeth.__call__();
+      }
+      } catch (Throwable t) {
+        System.err.println("while disposing: " + t);
+      }
+
+      maybeShutdownSoundEngine();
+
       Thread.setDefaultUncaughtExceptionHandler(null);
       if (PApplet.platform == PConstants.MACOSX && Arrays.asList(args).contains("fullScreen")) {
         // Frame should be OS-X fullscreen, and it won't stop being that unless the jvm
@@ -915,6 +933,26 @@ public class PAppletJythonDriver extends PApplet {
     }
     if (terminalException != null) {
       throw terminalException;
+    }
+  }
+
+  /**
+   * The sound library is designed to depend on exiting the VM when the sketch
+   * exits, or rather, it's not designed to work if startup up with one
+   * PApplet, but then attempted to be used with another. This hack nukes
+   * the Engine singleton so that it has to be re-instantiated on the next
+   * run.
+   */
+  private void maybeShutdownSoundEngine() {
+    try {
+      final Class<?> appClass = Class.forName("processing.sound.Engine");
+      final Field singleton = appClass.getDeclaredField("singleton");
+      singleton.setAccessible(true);
+      singleton.set(null, null);
+    } catch (final ClassNotFoundException cnfe) {
+      // ignored
+    } catch (final Exception e) {
+      e.printStackTrace();
     }
   }
 
@@ -1445,25 +1483,6 @@ public class PAppletJythonDriver extends PApplet {
   public void keyTyped(final KeyEvent e) {
     wrapKeyVariables();
     keyTypedFunc.invoke(e);
-  }
-
-  // Processing's rendering architecture calls dispose() from 1..N times where N is
-  // determined by a roll of a d6.
-  private volatile boolean disposeCalled = false;
-
-  @Override
-  public void dispose() {
-    if (disposeCalled) {
-      return;
-    }
-    disposeCalled = true;
-    super.dispose();
-    if (stopMeth != null) {
-      stopMeth.__call__();
-    }
-    if (disposeMeth != null) {
-      disposeMeth.__call__();
-    }
   }
 
   @Override

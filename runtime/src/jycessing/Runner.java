@@ -290,9 +290,20 @@ public class Runner {
 
     // Suppress sys-package-manager output.
     props.setProperty("python.verbose", "error");
-    // Prevent "Failed to install '': java.nio.charset.UnsupportedCharsetException: cp0."
-    props.put("python.console.encoding", "UTF-8"); 
+
+    // Attempt to prevent "Failed to install '': java.nio.charset.UnsupportedCharsetException: cp0."
+    props.put("python.console.encoding", "utf-8");
+    props.put("python.io.encoding", "utf-8");
+    props.put("python.io.errors", "utf-8");
+
     props.put("python.import.site", "false");
+
+    props.put("python.cachedir.skip", "false");
+    props.put("python.cachedir",
+        new File(System.getProperty("java.io.tmpdir"), "PythonModeCache").getAbsolutePath());
+
+    // Permit python subclasses to access protect fields, as in Beads.
+    props.put("python.security.respectJavaAccessibility", "false");
 
     // Can be handy for class loading issues and the like.
     // props.setProperty("python.verbose", "debug");
@@ -353,7 +364,7 @@ public class Runner {
       }
 
       for (final String lib : userLibs) {
-        sys.path.insert(0, Py.newString(lib));
+        sys.path.insert(0, Py.newStringUTF8(lib));
       }
 
       // Make fake "launcher" module available to sketches - will only work with standalone sketches
@@ -367,7 +378,7 @@ public class Runner {
        * bound methods (such as loadImage(), noSmooth(), noise(), etc.) in the builtins
        * namespace.
        */
-      interp.set("__cwd__", sketch.getHomeDirectory().getAbsolutePath());
+      interp.set("__cwd__", Py.newStringUTF8(sketch.getHomeDirectory().getAbsolutePath()));
       interp.set("__python_mode_build__", BUILD_NUMBER);
       interp.set("__stdout__", stdout);
       interp.set("__stderr__", stderr);

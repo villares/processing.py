@@ -8,8 +8,8 @@ MODES=~/Documents/Processing/modes;
 if [[ $(uname) == 'Darwin' ]]; then
 	RUNPROCESSING=$PROCESSING/build/macosx/work/Processing.app/Contents/MacOS/Processing
 else 
-	RUNPROCESSING="$PROCESSING/build/windows/work/processing.exe"
-	MODES=~/feinberg/Documents/Processing/modes;
+	RUNPROCESSING="$PROCESSING/build/linux/work/processing"
+	MODES=~/sketchbook/modes;
 fi
 
 cd "$PROCESSING/build" && \
