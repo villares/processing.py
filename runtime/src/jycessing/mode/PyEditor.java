@@ -21,6 +21,7 @@ import javax.swing.JOptionPane;
 
 import jycessing.DisplayType;
 import jycessing.IOUtil;
+import jycessing.jni.OSX;
 import jycessing.mode.export.ExportDialog;
 import jycessing.mode.run.PdeSketch;
 import jycessing.mode.run.PdeSketch.LocationType;
@@ -34,6 +35,7 @@ import processing.app.Library;
 import processing.app.Messages;
 import processing.app.Mode;
 import processing.app.Platform;
+import processing.app.Preferences;
 import processing.app.SketchCode;
 import processing.app.SketchException;
 import processing.app.syntax.JEditTextArea;
@@ -44,6 +46,8 @@ import processing.app.ui.EditorException;
 import processing.app.ui.EditorState;
 import processing.app.ui.EditorToolbar;
 import processing.app.ui.Toolkit;
+import processing.core.PApplet;
+import processing.core.PConstants;
 
 @SuppressWarnings("serial")
 public class PyEditor extends Editor {
@@ -341,9 +345,16 @@ public class PyEditor extends Editor {
 
     try {
       sketchService.runSketch(
-          new PdeSketch(sketch, sketchPath, displayType, location, locationType));
+          new PdeSketch(sketch, sketchPath, displayType, location, locationType,
+              Preferences.get("run.present.bgcolor"), Preferences.get("run.present.stop.color")));
     } catch (final SketchException e) {
       statusError(e);
+    }
+  }
+
+  private void bringToFront() {
+    if (PApplet.platform == PConstants.MACOSX) {
+      OSX.bringToFront(pyMode);
     }
   }
 
@@ -351,6 +362,7 @@ public class PyEditor extends Editor {
   public void deactivateRun() {
     restoreToolbar();
     cleanupTempSketch();
+    bringToFront();
   }
 
   public void handleRun() {
